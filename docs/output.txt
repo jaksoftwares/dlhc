@@ -1,0 +1,786 @@
+
+--- DLHC_Project_Setup_and_Architecture.docx ---
+Dovepeak Letter Head Creator (DLHC)Project Setup & System Architecture Document
+Project Overview
+Dovepeak Letter Head Creator (DLHC) is a professional SaaS platform that enables businesses, NGOs, consultants, and institutions to create, customize, preview, and export professional company letterheads in PDF and Microsoft Word formats.
+Recommended Technology Stack
+Frontend:- Next.js 15 (App Router)- TypeScript- Tailwind CSS- Shadcn UI- Zustand- React Hook Form- Zod Validation- React PDF- jsPDF- docx- dnd-kitBackend:- Django REST Framework- PostgreSQL- AWS S3- JWT Authentication
+Project Structure
+dlhc/├── app/├── components/├── lib/├── types/├── hooks/├── store/├── public/└── prisma/
+Core Application Flow
+1. User Registration & Login2. Company Profile Creation3. Template Selection4. Letterhead Editing5. Real-Time Preview6. Export to PDF/DOCX7. Save Designs
+Company Profile Fields
+- Company Name- Logo- Physical Address- Postal Address- Phone Number- Email Address- Website- Tagline- Tax PIN- Registration Number
+Template Categories
+- Corporate- Minimalist- Executive- Modern- NGO- Government- Education
+Editor Features
+- Change Colors- Move Logo- Adjust Header- Adjust Footer- Change Fonts- Add Social Media Links- Real-Time Preview
+Database Design
+Users Table- id- name- email- password- created_atCompanies Table- id- user_id- company_name- logo- address- phone- email- website- tax_pin- registration_no- created_atTemplates Table- id- name- category- thumbnail- json_config- created_atUser Templates Table- id- user_id- company_id- template_id- custom_config- created_at
+Dashboard Pages
+Landing Page- Hero Section- Features- How It Works- Pricing- Testimonials- FAQDashboard- Total Templates- Saved Designs- Recent Downloads- Quick ActionsTemplate Library- Grid Layout- Preview Cards- Category FiltersEditor Page- Canvas- Properties Panel- Preview Window- Export Actions
+Pricing Model
+Free Plan- 3 Templates- Watermarked PDF- No DOCX ExportProfessional Plan- Unlimited Templates- PDF Export- DOCX Export- Cloud SaveEnterprise Plan- Multi-user Teams- Custom Branding- Dedicated Templates- Priority Support
+Future Expansion
+- Invoice Creator- Quotation Creator- Company Profile Creator- Business Card Generator- Email Signature Creator
+MVP Features
+- Authentication- Company Profile Creation- 10 Premium Templates- Live Preview- PDF Export- DOCX Export- Save Designs- User Dashboard
+Development Roadmap
+Phase 1 (Week 1)- Next.js Setup- PostgreSQL Setup- Authentication- DashboardPhase 2 (Week 2)- Company Profile Module- Template EnginePhase 3 (Week 3)- Live Preview System- Template CustomizationPhase 4 (Week 4)- PDF Generation- DOCX GenerationPhase 5 (Week 5)- Payments- Subscriptions- Production Deployment
+
+--- Dovepeak Letter Head Creator Database Design.docx ---
+Dovepeak Letter Head Creator (DLHC)
+Initial Database Design Documentation
+Version 1.0
+Technology Stack
+Frontend
+Next.js (App Router)
+TypeScript
+TailwindCSS
+Shadcn UI
+Backend
+Serverless Architecture
+Next.js Server Actions
+Supabase PostgreSQL
+Cloudinary Media Storage
+Authentication
+Supabase Auth
+File Storage
+Cloudinary
+1. Database Design Objectives
+The database must support:
+User authentication and authorization
+Company profile management
+Multiple companies per user
+Letterhead template management
+Template customization
+Design saving
+PDF generation history
+DOCX generation history
+User subscriptions
+Billing management
+Template categories
+Future expansion modules
+The architecture should be designed to support:
+Multi-tenancy
+SaaS subscriptions
+Team collaboration
+Enterprise plans
+Multiple brands per organization
+2. Database Overview
+The initial database will contain the following core entities:
+Users
+Organizations
+Company Profiles
+Team Members
+Templates
+Template Categories
+User Designs
+Design Versions
+Downloads
+Subscriptions
+Payments
+Activity Logs
+Notifications
+API Usage
+Settings
+3. Users Table
+Stores authenticated users.
+Table: users
+Field
+Type
+id
+UUID (PK)
+email
+VARCHAR
+full_name
+VARCHAR
+avatar_url
+TEXT
+phone_number
+VARCHAR
+account_type
+VARCHAR
+email_verified
+BOOLEAN
+created_at
+TIMESTAMP
+updated_at
+TIMESTAMP
+last_login_at
+TIMESTAMP
+Account Types
+Free
+Professional
+Enterprise
+Admin
+4. Organizations Table
+Allows future multi-company support.
+Table: organizations
+Field
+Type
+id
+UUID
+owner_id
+UUID
+name
+VARCHAR
+slug
+VARCHAR
+logo_url
+TEXT
+created_at
+TIMESTAMP
+updated_at
+TIMESTAMP
+Example
+Dovepeak Holdings may own:
+Dovepeak Logistics
+Dovepeak Technologies
+Dovepeak Foundation
+under one account.
+5. Company Profiles Table
+Core business information.
+Table: company_profiles
+Field
+Type
+id
+UUID
+organization_id
+UUID
+company_name
+VARCHAR
+tagline
+VARCHAR
+registration_number
+VARCHAR
+tax_pin
+VARCHAR
+email
+VARCHAR
+phone
+VARCHAR
+website
+VARCHAR
+address_line_1
+VARCHAR
+address_line_2
+VARCHAR
+city
+VARCHAR
+country
+VARCHAR
+postal_code
+VARCHAR
+logo_url
+TEXT
+primary_color
+VARCHAR
+secondary_color
+VARCHAR
+created_at
+TIMESTAMP
+updated_at
+TIMESTAMP
+6. Team Members
+Supports collaboration.
+Table: organization_members
+Field
+Type
+id
+UUID
+organization_id
+UUID
+user_id
+UUID
+role
+VARCHAR
+invited_by
+UUID
+joined_at
+TIMESTAMP
+Roles
+Owner
+Admin
+Editor
+Viewer
+7. Template Categories
+Template classification.
+Table: template_categories
+Field
+Type
+id
+UUID
+name
+VARCHAR
+description
+TEXT
+created_at
+TIMESTAMP
+Categories
+Corporate
+Executive
+Minimalist
+Government
+Education
+NGO
+Modern
+8. Master Templates
+System-generated templates.
+Table: templates
+Field
+Type
+id
+UUID
+category_id
+UUID
+name
+VARCHAR
+description
+TEXT
+thumbnail_url
+TEXT
+preview_url
+TEXT
+template_schema
+JSONB
+is_premium
+BOOLEAN
+status
+VARCHAR
+created_at
+TIMESTAMP
+Status
+Draft
+Published
+Archived
+9. User Designs
+User-created letterheads.
+Table: designs
+Field
+Type
+id
+UUID
+user_id
+UUID
+organization_id
+UUID
+company_profile_id
+UUID
+template_id
+UUID
+design_name
+VARCHAR
+design_data
+JSONB
+thumbnail_url
+TEXT
+created_at
+TIMESTAMP
+updated_at
+TIMESTAMP
+10. Design Versions
+Supports undo history and revisions.
+Table: design_versions
+Field
+Type
+id
+UUID
+design_id
+UUID
+version_number
+INTEGER
+version_data
+JSONB
+created_at
+TIMESTAMP
+11. Downloads Table
+Tracks exports.
+Table: downloads
+Field
+Type
+id
+UUID
+user_id
+UUID
+design_id
+UUID
+format
+VARCHAR
+file_url
+TEXT
+created_at
+TIMESTAMP
+Formats
+PDF
+DOCX
+12. Subscription Plans
+Defines system plans.
+Table: subscription_plans
+Field
+Type
+id
+UUID
+plan_name
+VARCHAR
+monthly_price
+DECIMAL
+yearly_price
+DECIMAL
+max_designs
+INTEGER
+max_downloads
+INTEGER
+allow_docx
+BOOLEAN
+allow_team_members
+BOOLEAN
+13. User Subscriptions
+Stores active plans.
+Table: subscriptions
+Field
+Type
+id
+UUID
+user_id
+UUID
+plan_id
+UUID
+status
+VARCHAR
+starts_at
+TIMESTAMP
+expires_at
+TIMESTAMP
+created_at
+TIMESTAMP
+Status
+Active
+Cancelled
+Expired
+Trial
+14. Payments
+Payment history.
+Table: payments
+Field
+Type
+id
+UUID
+subscription_id
+UUID
+provider
+VARCHAR
+amount
+DECIMAL
+currency
+VARCHAR
+transaction_reference
+VARCHAR
+payment_status
+VARCHAR
+paid_at
+TIMESTAMP
+Providers
+Stripe
+PayPal
+M-Pesa
+15. Notifications
+User alerts.
+Table: notifications
+Field
+Type
+id
+UUID
+user_id
+UUID
+title
+VARCHAR
+message
+TEXT
+is_read
+BOOLEAN
+created_at
+TIMESTAMP
+16. Activity Logs
+Auditing and analytics.
+Table: activity_logs
+Field
+Type
+id
+UUID
+user_id
+UUID
+activity_type
+VARCHAR
+metadata
+JSONB
+ip_address
+VARCHAR
+created_at
+TIMESTAMP
+Examples
+Login
+Template Selected
+Design Created
+Design Edited
+PDF Downloaded
+DOCX Downloaded
+17. User Settings
+Preferences.
+Table: user_settings
+Field
+Type
+id
+UUID
+user_id
+UUID
+preferred_theme
+VARCHAR
+preferred_language
+VARCHAR
+email_notifications
+BOOLEAN
+created_at
+TIMESTAMP
+18. API Usage Tracking
+Future-proofing for API monetization.
+Table: api_usage
+Field
+Type
+id
+UUID
+user_id
+UUID
+endpoint
+VARCHAR
+request_count
+INTEGER
+usage_date
+DATE
+19. Cloudinary Media References
+No files are stored in Supabase.
+Cloudinary stores:
+Company Logos
+Template Thumbnails
+Design Thumbnails
+Generated Preview Images
+Database stores only:
+logo_urlthumbnail_urlpreview_urlfile_url
+20. Recommended MVP Database
+For Version 1, implement only:
+Essential Tables
+users
+organizations
+company_profiles
+templates
+template_categories
+designs
+downloads
+Optional Later
+subscriptions
+payments
+notifications
+organization_members
+activity_logs
+api_usage
+This MVP structure is sufficient to support:
+User Authentication
+Company Profile Management
+Letterhead Creation
+Template Selection
+Live Preview
+PDF Export
+DOCX Export
+Design Saving
+while remaining scalable enough to evolve into a full SaaS business-document generation platform.
+
+--- Dovepeak Letter Head Creator Documentation.docx ---
+Dovepeak Letter Head Creator (DLHC)
+System Overview and Functional Requirements Documentation
+Version 1.0
+1. Introduction
+Project Name
+Dovepeak Letter Head Creator (DLHC)
+Project Type
+Cloud-Based Software as a Service (SaaS) Platform
+Platform
+Web Application
+Technology Stack
+Next.js (Frontend & Serverless Backend)
+Supabase PostgreSQL Database
+Supabase Authentication
+Cloudinary Media Storage
+Tailwind CSS
+Shadcn UI
+PDF Generation Engine
+DOCX Generation Engine
+2. Project Background
+Professional corporate communication requires businesses to use standardized and professionally branded documents.
+One of the most important business branding assets is a company letterhead.
+Organizations use letterheads for:
+Official communication
+Contracts
+Quotations
+Invoices
+Proposals
+Reports
+Business correspondence
+Legal documents
+Despite their importance, creating professional letterheads remains a challenge for many businesses.
+Most organizations either:
+Hire graphic designers
+Use expensive design software
+Download generic templates
+Create inconsistent designs manually
+These approaches increase costs, consume time, and often produce inconsistent branding.
+3. Problem Statement
+Many organizations struggle to create professional company letterheads because existing solutions:
+Require graphic design skills
+Are expensive
+Are difficult to customize
+Are time-consuming
+Lack document export capabilities
+Do not provide consistent branding
+As a result, businesses often produce documents that appear unprofessional and inconsistent.
+This affects:
+Brand identity
+Corporate image
+Customer trust
+Business credibility
+4. Proposed Solution
+Dovepeak Letter Head Creator (DLHC) is a web-based platform that enables users to create professional company letterheads in minutes without requiring any design experience.
+The system simplifies the entire process by providing:
+Ready-made professional templates
+Real-time customization
+Company profile management
+Live preview functionality
+PDF exports
+Word document exports
+Cloud-based storage
+Users simply provide their company details and DLHC automatically generates professionally branded letterheads.
+5. System Goal
+The goal of DLHC is to make professional corporate branding accessible to every business regardless of size, technical skills, or design expertise.
+The platform aims to:
+Reduce branding costs
+Improve professionalism
+Standardize company communications
+Save time
+Increase productivity
+6. How the System Solves the Problem
+Traditional Process:
+Business → Designer → Design Revisions → Approval → Export → Use
+Problems:
+Expensive
+Slow
+Repetitive
+Requires technical expertise
+DLHC Process:
+Business → Enter Company Details → Choose Template → Customize → Preview → Download
+Benefits:
+Fast
+Affordable
+User Friendly
+Professional
+Consistent Branding
+The system eliminates the dependency on graphic designers for routine letterhead creation.
+7. Core Functionalities
+7.1 User Registration and Authentication
+Users can:
+Create accounts
+Login securely
+Reset passwords
+Verify email addresses
+Manage profiles
+The authentication system is handled using Supabase Authentication.
+7.2 Company Profile Management
+Users can create and manage company information.
+The system stores:
+Company Name
+Company Logo
+Email Address
+Phone Number
+Website
+Physical Address
+Postal Address
+Registration Number
+Tax PIN
+Company Tagline
+This information becomes the foundation of every generated letterhead.
+7.3 Logo Management
+Users can upload logos.
+Uploaded logos are stored in Cloudinary.
+The system automatically:
+Optimizes images
+Resizes images
+Compresses images
+Delivers images efficiently
+Supported formats:
+PNG
+JPG
+JPEG
+SVG
+7.4 Template Library
+The system provides professionally designed letterhead templates.
+Categories include:
+Corporate
+Executive
+Modern
+Minimalist
+NGO
+Government
+Educational
+Users can preview templates before selection.
+7.5 Template Customization
+Users can personalize templates by modifying:
+Colors
+Primary Color
+Secondary Color
+Typography
+Font Family
+Font Size
+Font Weight
+Layout
+Header Layout
+Footer Layout
+Logo Position
+Contact Information Placement
+The customization process requires no coding knowledge.
+7.6 Real-Time Preview
+One of the most important system features.
+As users make changes, the preview updates instantly.
+This allows users to:
+See changes immediately
+Compare designs
+Improve branding consistency
+The preview mimics the final document exactly.
+7.7 Letterhead Generation Engine
+The generation engine combines:
+Company Information
+Logo
+Template Structure
+User Customizations
+and produces a finalized professional letterhead.
+The generated document remains consistent across all exports.
+7.8 PDF Export
+Users can export letterheads as PDF files.
+Benefits:
+Print Ready
+Professional Formatting
+Universal Compatibility
+Secure Distribution
+PDF exports preserve design integrity.
+7.9 Word Document Export
+Users can export editable Microsoft Word documents.
+Benefits:
+Easy Editing
+Corporate Usage
+Office Compatibility
+Generated documents maintain branding while remaining editable.
+7.10 Save Designs
+Users can save customized letterheads.
+Saved designs can later be:
+Reopened
+Edited
+Duplicated
+Downloaded
+This eliminates the need to recreate designs repeatedly.
+7.11 Design History
+The system maintains versions of saved designs.
+Users can:
+View previous versions
+Restore older versions
+Track changes
+This reduces the risk of losing work.
+7.12 Download History
+Users can view:
+Previously downloaded documents
+Download dates
+Export formats
+This helps with record management.
+8. User Journey
+Step 1
+User creates an account.
+↓
+Step 2
+User logs in.
+↓
+Step 3
+User creates company profile.
+↓
+Step 4
+User uploads company logo.
+↓
+Step 5
+User selects a template.
+↓
+Step 6
+User customizes template.
+↓
+Step 7
+User previews changes.
+↓
+Step 8
+User saves design.
+↓
+Step 9
+User exports PDF or Word document.
+↓
+Step 10
+User uses generated letterhead in business communications.
+9. Future Functionalities
+The platform is designed for future expansion.
+Additional modules may include:
+Invoice Generator
+Generate branded invoices.
+Quotation Generator
+Generate professional quotations.
+Company Profile Generator
+Create company profile documents.
+Business Card Generator
+Generate printable business cards.
+Email Signature Generator
+Create branded email signatures.
+Corporate Branding Suite
+Manage all company branding assets from one platform.
+10. Expected Benefits
+For Businesses
+Professional Branding
+Reduced Design Costs
+Faster Document Creation
+Improved Consistency
+Increased Productivity
+For Organizations
+Standardized Corporate Communication
+Better Brand Identity
+Stronger Customer Confidence
+Better Corporate Image
+For Dovepeak
+Scalable SaaS Product
+Subscription Revenue
+Regional Market Expansion
+Opportunity for Additional Branding Products
+11. Project Vision
+To become the leading digital platform for business document branding by enabling organizations to create professional, consistent, and high-quality corporate communication materials without requiring design expertise.
+Dovepeak Letter Head Creator (DLHC) will evolve from a letterhead generation platform into a complete corporate branding ecosystem serving businesses, institutions, NGOs, and enterprises across Africa and beyond.
+
+--- Dovepeak_Letter_Head_Creator_Project_Justification.docx ---
+Dovepeak Letter Head Creator (DLHC)Project Justification Document
+Professional Business ProposalVersion 1.0
+Background
+A professional letterhead is an essential component of corporate communication. Organizations use letterheads for official correspondence, business proposals, quotations, invoices, contracts, reports, legal documents, and internal and external communication. Many businesses lack the expertise, time, or resources to create professional letterheads, creating a need for a simple, affordable, and professional solution.
+Problem Statement
+Many businesses struggle to create and maintain professionally branded letterheads because existing solutions are expensive, difficult to use, time-consuming, require graphic design skills, offer limited customization, and lack instant document generation capabilities.
+Proposed Solution
+Dovepeak Letter Head Creator (DLHC) is a modern web-based platform built with Next.js that enables users to generate professional company letterheads within minutes. Users provide company details, select templates, preview changes in real time, customize branding, and export documents in PDF and Microsoft Word formats.
+Target Users
+Small businesses, startups, NGOs, educational institutions, government agencies, consultants, freelancers, and corporate organizations.
+Key Features
+Company profile setup, template gallery, live preview, drag-and-drop customization, PDF export, Word export, cloud storage, multi-brand support, and mobile responsiveness.
+Why Next.js?
+Next.js offers excellent performance, SEO optimization, scalability, modern UI capabilities, and easy deployment across major cloud platforms.
+Revenue Opportunities
+Freemium plans, subscriptions, enterprise offerings, and premium template purchases provide multiple revenue streams.
+Expected Benefits
+Reduced design costs, improved brand consistency, faster document preparation, increased efficiency, and standardized communication.
+Project Vision
+To become the leading African digital platform for generating professional business stationery and branding documents, empowering organizations of all sizes to create consistent, professional, and high-quality corporate communications without requiring design expertise.

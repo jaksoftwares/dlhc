@@ -1,0 +1,9 @@
+<svg width="100%" height="100%" viewBox="0 0 128 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g fill="#2563EB">
+    <rect x="12" y="10" width="12" height="80" />
+    <rect x="30" y="10" width="12" height="80" />
+    <rect x="48" y="10" width="12" height="80" />
+    <path d="M 60 10 h 20 c 25 0, 36 15, 36 40 c 0 25, -11 40, -36 40 h -20 v -12 h 20 c 15 0, 24 -10, 24 -28 c 0 -18, -9 -28, -24 -28 h -20 v -12 z" />
+  </g>
+  <text x="64" y="132" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="34" fill="#0F172A" letter-spacing="1">DLHC</text>
+</svg>
