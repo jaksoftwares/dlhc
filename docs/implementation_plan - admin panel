@@ -1,0 +1,80 @@
+# Implementation Plan: DLHC Admin Panel
+
+## Goal Description
+Build the internal Super Admin Panel for the DLHC platform. While the User Dashboard is for companies generating letterheads, the Admin Panel is strictly for the Dovepeak platform administrators. It will be used to manage global system resources like Master Templates, User Accounts, Subscription Plans, and Platform Analytics.
+
+The design will remain professional and data-dense, reusing the clean B2B SaaS components established during the User Dashboard phase.
+
+## User Review Required
+
+> [!IMPORTANT]  
+> Please review the proposed **Modules** below. Are there any specific admin capabilities you need for MVP that I haven't listed (e.g., manual billing overrides, support ticket viewer)? 
+> 
+> Also, will the Admin Panel be deployed on the same domain (e.g., `dovepeak.com/admin`), or do you plan to separate it entirely later? I have proposed keeping it in the same repository under the `/admin` route protected by middleware.
+
+## 1. Architecture & Security
+
+**Route Group:** `src/app/(admin)`
+*   **Routing:** All admin pages will sit under the `/admin` path.
+*   **Security Guard:** A strict server-side layout or middleware check will verify that the authenticated user's `account_type` is exactly `"Admin"`. Unauthorized access will redirect to the standard `/dashboard` or `/login`.
+*   **Layout (`layout.tsx`):** We will create a distinct `AdminSidebar.tsx` and `AdminHeader.tsx`. The color scheme will use a slightly different accent (e.g., darker sidebar or a subtle red/purple top border) to ensure administrators are visually aware they are in a privileged environment.
+
+## 2. Modules & Routes
+
+### A. Admin Overview (Platform Analytics)
+**Route:** `/admin`
+*   **Purpose:** High-level platform health monitoring.
+*   **Components:**
+    *   **KPI Cards:** Total Registered Users, Active Subscriptions, Total Templates Published, Total Letterheads Exported (PDF/DOCX).
+    *   **Recent Activity:** A feed of the latest platform events (new signups, plan upgrades).
+
+### B. User & Organization Management
+**Route:** `/admin/users`
+*   **Purpose:** Oversee customer accounts and resolve issues.
+*   **Components:**
+    *   **Data Table:** Paginated list of users showing Name, Email, Account Type (Free/Pro/Enterprise), and Join Date.
+    *   **Actions:** View user details, manually upgrade/downgrade subscription tiers (for support purposes), or suspend accounts.
+
+### C. Master Templates Manager
+**Route:** `/admin/templates`
+*   **Purpose:** The most critical admin module. This is where the platform team uploads and configures the system templates that users see.
+*   **Components:**
+    *   **Template Grid/List:** Manage the `templates` database table.
+    *   **Template Builder/Uploader Form:**
+        *   Template Name & Description.
+        *   Category Assignment.
+        *   Access Level (Free vs. Premium).
+        *   Status Toggle (Draft / Published / Archived).
+        *   Upload Thumbnail & Preview Image (to Cloudinary).
+        *   *JSON Schema Input:* A code editor field or upload for the `template_schema` JSON that dictates the layout structure for the user's Editor.
+
+### D. Template Categories
+**Route:** `/admin/categories`
+*   **Purpose:** Manage the taxonomy of templates.
+*   **Components:**
+    *   **Category List:** View, edit, and delete categories (e.g., Corporate, Medical, Legal).
+    *   **Add Category Modal:** Simple form for Name and Description.
+
+### E. Subscription Plans Configuration (Optional MVP)
+**Route:** `/admin/plans`
+*   **Purpose:** Define system tiers and limits.
+*   **Components:**
+    *   Manage `subscription_plans` table: Update Monthly/Yearly prices, adjust `max_designs` and `max_downloads` limits, and toggle feature flags like `allow_docx`.
+
+### F. Activity & Audit Logs (Optional MVP)
+**Route:** `/admin/logs`
+*   **Purpose:** Security and tracking.
+*   **Components:**
+    *   A read-only table tracking system-wide `activity_logs` (e.g., tracking when another admin modifies a template or a user upgrades).
+
+## 3. Reusable Components to Leverage
+We will heavily reuse the components created during the User Dashboard phase to maintain consistency and speed up development:
+*   `PageHeader`: Standard titles and primary CTA buttons.
+*   `DataCard`: For wrapping forms and analytics.
+*   `DataTable`: Will be expanded to support basic sorting and pagination if necessary.
+*   `EmptyState`: For blank tables.
+
+## Verification Plan
+1.  **Security Testing:** Ensure attempting to access `/admin` without an Admin token redirects correctly.
+2.  **Type Safety:** Continue using strict TypeScript interfaces for the admin data types, verifying with `tsc --noEmit`.
+3.  **Visual Distinction:** Ensure the admin panel is visually distinguishable from the user workspace to prevent context confusion.

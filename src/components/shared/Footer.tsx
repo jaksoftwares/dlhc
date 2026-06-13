@@ -27,9 +27,9 @@ export function Footer() {
           {/* Links Col 1 */}
           <div className="flex flex-col gap-3">
             <h4 className="font-semibold text-white">Product</h4>
-            <Link href="#features" className="text-sm hover:text-white transition-colors">Features</Link>
-            <Link href="#templates" className="text-sm hover:text-white transition-colors">Templates</Link>
-            <Link href="#pricing" className="text-sm hover:text-white transition-colors">Pricing</Link>
+            <Link href="/features" className="text-sm hover:text-white transition-colors">Features</Link>
+            <Link href="/templates" className="text-sm hover:text-white transition-colors">Templates</Link>
+            <Link href="/pricing" className="text-sm hover:text-white transition-colors">Pricing</Link>
           </div>
 
           {/* Links Col 2 */}
@@ -37,8 +37,8 @@ export function Footer() {
             <h4 className="font-semibold text-white">Company</h4>
             <Link href="/about" className="text-sm hover:text-white transition-colors">About Us</Link>
             <Link href="/contact" className="text-sm hover:text-white transition-colors">Contact</Link>
-            <Link href="/privacy" className="text-sm hover:text-white transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="text-sm hover:text-white transition-colors">Terms of Service</Link>
+            <Link href="/privacy-policy" className="text-sm hover:text-white transition-colors">Privacy Policy</Link>
+            <Link href="/terms-of-service" className="text-sm hover:text-white transition-colors">Terms of Service</Link>
           </div>
 
           {/* Contact Col */}

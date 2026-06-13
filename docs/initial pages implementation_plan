@@ -1,0 +1,107 @@
+# Implementation Plan: DLHC Public-Facing Pages
+
+This document outlines the approach for implementing the remaining public pages and shared components of the DLHC platform, adhering strictly to a professional, B2B, product-focused design language. We will avoid marketing exaggerations, massive hero sections, decorative gradients, and instead focus on clarity, utility, and a clean SaaS aesthetic inspired by Microsoft 365, Atlassian, and Stripe.
+
+## User Review Required
+
+> [!IMPORTANT]  
+> Please review the proposed **Content Updates** for the Home Page and the **Component Strategy**. Ensure the new professional copy aligns perfectly with your expectations before we proceed to coding.
+> Also, confirm if you would like me to use `lucide-react` for any minimal functional icons (e.g., checkmarks in pricing tables, user roles), as it is already in `package.json`.
+
+## Proposed Changes
+
+We will organize the implementation into three phases: Shared Components, Core Public Pages, and Legal/Auth Pages.
+
+---
+
+### Phase 1: Shared Components & Layout
+
+We need to build the foundational UI components to ensure consistency across all public routes.
+
+#### [NEW] `src/components/public/PublicNavbar.tsx`
+*   **Purpose:** A responsive top navigation bar.
+*   **Design:** Minimalist white/dark background with a slight bottom border. Left-aligned logo, center-aligned links (Features, Templates, Pricing), right-aligned Login/Register buttons. No massive padding.
+
+#### [NEW] `src/components/public/PublicFooter.tsx`
+*   **Purpose:** Standard SaaS footer.
+*   **Design:** Structured grid with column links (Product, Resources, Legal, Company) and a simple copyright line. Muted text colors.
+
+#### [NEW] `src/components/public/CookieBanner.tsx`
+*   **Purpose:** GDPR/CCPA compliant unobtrusive banner.
+*   **Design:** Fixed bottom strip, compact, with "Accept" and "Manage Preferences" buttons.
+
+#### [NEW] `src/components/public/PricingCard.tsx`
+*   **Purpose:** Reusable component for both the Pricing page and the Home page preview.
+*   **Design:** Clean border, explicit price, bulleted feature list (functional check icons), primary/secondary button CTA depending on the tier.
+
+#### [NEW] `src/components/public/TemplateCard.tsx`
+*   **Purpose:** Standardized display for templates in the gallery.
+*   **Design:** Crisp thumbnail with a subtle 1px border. Title, Category tag. Simple "Preview" / "Use Template" hover actions (no excessive animation).
+
+#### [MODIFY] `src/app/(public)/layout.tsx`
+*   **Change:** Integrate `PublicNavbar`, `PublicFooter`, and `CookieBanner` into the public layout wrapper so they automatically apply to all child pages.
+
+---
+
+### Phase 2: Core Public Pages
+
+#### [MODIFY] `src/app/(public)/page.tsx` (Home Page)
+*   **Refactoring Current Implementation:**
+    *   **Hero Section:** Change headline from *"Create Professional Letterheads in Minutes"* to *"Standardize Company Letterheads"*. Change subheadline to *"Create, manage, and export approved corporate letterheads across your organization."* Reduce excessive `py-24` padding to a more compact `py-16`.
+    *   **Features Overview:** Convert the current generic "Why Choose DLHC?" to a practical list: "Drag & Drop Editor", "Role-Based Team Management", "PDF & DOCX Export". Remove emojis (✨, 🏢, 📄) and replace them with standard, professional `lucide-react` icons (e.g., `LayoutTemplate`, `Users`, `FileDown`).
+    *   **New Section (Pricing Preview):** Add a compact section showing the 3 tiers using the new `PricingCard` component.
+    *   **New Section (Final CTA):** A structured, simple banner: "Manage templates, teams, and exports from a centralized workspace." with a "Get Started" button.
+
+#### [NEW] `src/app/(public)/templates/page.tsx`
+*   **Purpose:** The Templates Gallery.
+*   **Structure:**
+    *   Compact Header: "Template Library"
+    *   Filter Bar: Search input and Category pills (Corporate, Medical, Legal, Minimalist, Creative).
+    *   Grid of `TemplateCard` components.
+    *   Bottom CTA for registration.
+
+#### [NEW] `src/app/(public)/pricing/page.tsx`
+*   **Purpose:** Dedicated Pricing Page.
+*   **Structure:**
+    *   Header: "Transparent Pricing for Organizations".
+    *   Grid of 3 `PricingCard` components (Free, Pro, Enterprise).
+    *   Feature Comparison Table (using standard HTML `<table>` styled with Tailwind for easy scanning).
+    *   FAQ Accordion.
+
+#### [NEW] `src/app/(public)/features/page.tsx`
+*   **Purpose:** Product Capabilities.
+*   **Structure:** Alternating left/right layout (or simple stacked sections) detailing:
+    *   Drag & Drop Editor (with placeholder for UI screenshot)
+    *   Team Management (Admin/Editor/Viewer workflows)
+    *   Exporting (PDF/DOCX)
+    *   Integrations
+
+---
+
+### Phase 3: Auth & Legal Pages
+
+#### [NEW] `src/app/(auth)/login/page.tsx` & `src/app/(auth)/register/page.tsx`
+*   *(Note: Assuming we place auth under an `(auth)` group for layout isolation, or integrate them into `(public)` if they share the exact same layout. We will likely use a dedicated centered-card layout without the marketing footer).*
+*   **Design:** Simple, centered card with email/password inputs and OAuth buttons. Professional, clean borders.
+
+#### [NEW] `src/app/(auth)/forgot-password/page.tsx` & `src/app/(auth)/reset-password/page.tsx`
+*   **Design:** Standard functional forms matching the login card aesthetic.
+
+#### [NEW] `src/app/(public)/privacy-policy/page.tsx`, `src/app/(public)/terms-of-service/page.tsx`, `src/app/(public)/contact/page.tsx`
+*   **Design:** `prose` (Tailwind Typography) styled long-form text content. Narrow maximum width (`max-w-3xl`) for optimal reading. The Contact page will feature a structured form and support email listing.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+*   Run `npm run lint` and `npm run build` to ensure no Type errors or missing imports are introduced across the new pages.
+
+### Manual Verification
+*   Review all new routes (`/`, `/templates`, `/pricing`, `/features`, `/login`, etc.) in the local dev environment.
+*   Verify responsive behavior (mobile, tablet, desktop) on the Home page and Pricing grid.
+*   Audit the final output against the "Professional SaaS" constraints:
+    *   No overly large fonts.
+    *   No excessive whitespace.
+    *   No generic marketing buzzwords.
+    *   Appropriate structural hierarchy and contrast.
