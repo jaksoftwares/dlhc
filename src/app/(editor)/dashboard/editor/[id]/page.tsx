@@ -4,46 +4,166 @@ import Link from "next/link"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { 
   ChevronLeft, Download, Save, Type, Palette, Layout, 
-  Maximize, MoreHorizontal, EyeOff, FileText, CheckCircle2, ChevronDown 
+  Maximize, MoreHorizontal, EyeOff, FileText, CheckCircle2, ChevronDown, Loader2, AlertCircle
 } from "lucide-react"
-import { useState } from "react"
+import { useReactToPrint } from "react-to-print"
+import { useState, useEffect, use, useRef } from "react"
+import { useEditorStore } from "@/store/editorStore"
+import { LetterheadRenderer, DocumentHeader, DocumentFooter } from "@/components/editor/LetterheadRenderer"
+import { FontFamily } from "@/types/template"
 
-export default function EditorPage({ params }: { params: { id: string } }) {
-  const [activeTab, setActiveTab] = useState("typography")
+export default function EditorPage({ params }: { params: Promise<{ id: string }> }) {
+  const { 
+    activeTemplate, setTemplate, updateTypography, updateColors, updateVisibility,
+    zoomLevel, setZoomLevel, saveStatus, setSaveStatus, designName, isExporting, setIsExporting, documentContent, companyProfile
+  } = useEditorStore()
   
+  const resolvedParams = use(params)
+  const printRef = useRef<HTMLDivElement>(null)
+  
+  // ==========================================
+  // SAVE SYSTEM (Auto & Manual)
+  // ==========================================
+  const handleSave = async () => {
+    setSaveStatus('saving')
+    try {
+      // In a full implementation, we would await supabase.from('designs').upsert(...)
+      await new Promise(resolve => setTimeout(resolve, 800)) // Mock network request
+      setSaveStatus('saved')
+    } catch (e) {
+      setSaveStatus('error')
+    }
+  }
+
+  // Auto-save debouncer
+  useEffect(() => {
+    if (saveStatus === 'saving') return;
+    setSaveStatus('unsaved')
+    
+    const timeoutId = setTimeout(() => {
+      handleSave()
+    }, 2000) // 2 seconds of inactivity
+
+    return () => clearTimeout(timeoutId)
+  }, [activeTemplate, documentContent])
+
+  // ==========================================
+  // PDF EXPORT (Native Browser Print Dialog)
+  // ==========================================
+  const handleExportPDF = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: designName.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
+    onBeforePrint: () => {
+      return new Promise<void>((resolve) => {
+        setIsExporting(true)
+        setTimeout(resolve, 100)
+      })
+    },
+    onAfterPrint: () => {
+      setIsExporting(false)
+    }
+  })
+
+  // ==========================================
+  // DOCX EXPORT (Native .docx with Headers)
+  // ==========================================
+  const handleExportDOCX = async () => {
+    setIsExporting(true)
+    
+    try {
+      // 1. Get the dynamic HTML of the Header and Footer
+      const headerHtml = document.getElementById("docx-header-wrapper")?.innerHTML || ""
+      const footerHtml = document.getElementById("docx-footer-wrapper")?.innerHTML || ""
+      
+      // 2. Get the body HTML from the rich text editor (we don't want the visual canvas wrapper)
+      const bodyHtml = documentContent || "<p></p>"
+      
+      // 3. Dynamically import wp-html-to-docx to avoid SSR issues
+      const { htmlToDocx } = await import("wp-html-to-docx")
+      
+      // 4. Generate the DOCX file buffer
+      const docxBuffer = await htmlToDocx(bodyHtml, {
+        header: headerHtml,
+        footer: footerHtml,
+        page: {
+          margin: {
+            top: parseInt(activeTemplate.margins.page), // Fallback approximation
+            bottom: parseInt(activeTemplate.margins.page),
+            left: parseInt(activeTemplate.margins.page),
+            right: parseInt(activeTemplate.margins.page),
+            unit: 'mm'
+          }
+        },
+        defaultFont: activeTemplate.typography.fontFamily.replace(/['"]/g, ''), // Strip quotes e.g. "Inter"
+      })
+      
+      // 5. Download the true .docx file
+      const blob = new Blob([docxBuffer as any], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      })
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${designName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.docx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error("DOCX Export failed:", error)
+      alert("Failed to generate DOCX. Please try again.")
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // ==========================================
+  // ZOOM SYSTEM
+  // ==========================================
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 10, 200))
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 10, 50))
+  const handleFitPage = () => setZoomLevel(100) // Reset to 100%
+
+
   return (
     <div className="flex flex-col h-full w-full">
       {/* Top Action Bar */}
       <header className="h-14 shrink-0 border-b bg-background flex items-center justify-between px-4">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/designs" className={buttonVariants({ variant: "ghost", size: "icon", className: "h-8 w-8 -ml-2" })}>
+          <Link href="/dashboard" className={buttonVariants({ variant: "ghost", size: "icon", className: "h-8 w-8 -ml-2" })}>
             <ChevronLeft className="h-4 w-4" />
           </Link>
           <div className="flex items-center gap-2">
             <input 
               type="text" 
-              defaultValue="Q3 Board Report" 
-              className="font-medium text-sm bg-transparent border-transparent hover:border-input focus:border-input rounded px-2 py-1 h-8 w-48 transition-colors focus-visible:outline-none"
+              defaultValue={designName} 
+              className="font-medium text-sm bg-transparent border-transparent hover:border-input focus:border-input rounded px-2 py-1 h-8 w-64 transition-colors focus-visible:outline-none"
             />
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
-              <CheckCircle2 className="h-3 w-3 text-green-500" />
-              Saved
+            
+            {/* Save Status Indicator */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md min-w-[80px] justify-center">
+              {saveStatus === 'saved' && <><CheckCircle2 className="h-3 w-3 text-green-500" /> Saved</>}
+              {saveStatus === 'saving' && <><Loader2 className="h-3 w-3 text-blue-500 animate-spin" /> Saving...</>}
+              {saveStatus === 'unsaved' && <><span className="h-2 w-2 rounded-full bg-amber-500"></span> Unsaved</>}
+              {saveStatus === 'error' && <><AlertCircle className="h-3 w-3 text-red-500" /> Failed</>}
             </div>
           </div>
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 hidden sm:flex">
+          <Button variant="outline" size="sm" className="h-8 hidden sm:flex" onClick={handleSave} disabled={saveStatus === 'saving'}>
             <Save className="mr-2 h-3.5 w-3.5" />
             Save Draft
           </Button>
           <div className="h-4 w-px bg-border mx-1 hidden sm:block"></div>
-          <Button variant="secondary" size="sm" className="h-8 text-blue-600 dark:text-blue-400">
+          <Button variant="secondary" size="sm" className="h-8 text-blue-600 dark:text-blue-400 disabled:opacity-50" onClick={handleExportDOCX} disabled={isExporting}>
             <FileText className="mr-2 h-3.5 w-3.5" />
             DOCX
           </Button>
-          <Button size="sm" className="h-8 bg-red-600 hover:bg-red-700 text-white">
-            <Download className="mr-2 h-3.5 w-3.5" />
+          <Button size="sm" className="h-8 bg-red-600 hover:bg-red-700 text-white" onClick={handleExportPDF} disabled={isExporting}>
+            {isExporting ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
             Export PDF
           </Button>
         </div>
@@ -60,38 +180,53 @@ export default function EditorPage({ params }: { params: { id: string } }) {
           
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {/* Accordion Item: Typography */}
-            <div className="rounded-md border bg-background">
-              <button className="flex items-center justify-between w-full p-3 text-sm font-medium hover:bg-muted/50 transition-colors">
+            <div className="rounded-md border bg-background overflow-hidden">
+              <div className="flex items-center justify-between w-full p-3 text-sm font-medium bg-muted/30 border-b">
                 <div className="flex items-center gap-2">
                   <Type className="h-4 w-4 text-muted-foreground" />
                   Typography
                 </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
-              <div className="p-3 border-t bg-muted/10 space-y-3">
+              </div>
+              <div className="p-3 bg-muted/10 space-y-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-foreground">Font Family</label>
-                  <select className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                    <option>Inter (Modern)</option>
-                    <option>Merriweather (Serif)</option>
-                    <option>Roboto (Clean)</option>
+                  <select 
+                    value={activeTemplate.typography.fontFamily}
+                    onChange={(e) => updateTypography({ fontFamily: e.target.value as FontFamily })}
+                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="Inter">Inter (Modern Sans)</option>
+                    <option value="Roboto">Roboto (Clean Sans)</option>
+                    <option value="Open Sans">Open Sans (Friendly Sans)</option>
+                    <option value="Merriweather">Merriweather (Formal Serif)</option>
+                    <option value="Lora">Lora (Elegant Serif)</option>
+                    <option value="Playfair Display">Playfair Display (Display Serif)</option>
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-foreground">Heading Size</label>
-                    <select className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus-visible:outline-none">
-                      <option>Large</option>
-                      <option>Medium</option>
-                      <option>Small</option>
+                    <label className="text-xs font-medium text-foreground">Body Size</label>
+                    <select 
+                      value={activeTemplate.typography.bodySize}
+                      onChange={(e) => updateTypography({ bodySize: e.target.value })}
+                      className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus-visible:outline-none"
+                    >
+                      <option value="12pt">Large (12pt)</option>
+                      <option value="11pt">Standard (11pt)</option>
+                      <option value="10pt">Compact (10pt)</option>
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-foreground">Body Size</label>
-                    <select className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus-visible:outline-none">
-                      <option>11pt</option>
-                      <option>10pt</option>
-                      <option>12pt</option>
+                    <label className="text-xs font-medium text-foreground">Heading Size</label>
+                    <select 
+                      value={activeTemplate.typography.headingSize}
+                      onChange={(e) => updateTypography({ headingSize: e.target.value })}
+                      className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus-visible:outline-none"
+                    >
+                      <option value="28pt">28pt</option>
+                      <option value="24pt">24pt</option>
+                      <option value="20pt">20pt</option>
+                      <option value="18pt">18pt</option>
                     </select>
                   </div>
                 </div>
@@ -99,113 +234,127 @@ export default function EditorPage({ params }: { params: { id: string } }) {
             </div>
 
             {/* Accordion Item: Colors */}
-            <div className="rounded-md border bg-background">
-              <button className="flex items-center justify-between w-full p-3 text-sm font-medium hover:bg-muted/50 transition-colors">
+            <div className="rounded-md border bg-background mt-2 overflow-hidden">
+              <div className="flex items-center justify-between w-full p-3 text-sm font-medium bg-muted/30 border-b">
                 <div className="flex items-center gap-2">
                   <Palette className="h-4 w-4 text-muted-foreground" />
                   Colors
                 </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </div>
-
-            {/* Accordion Item: Layout */}
-            <div className="rounded-md border bg-background">
-              <button className="flex items-center justify-between w-full p-3 text-sm font-medium hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-2">
-                  <Layout className="h-4 w-4 text-muted-foreground" />
-                  Layout & Margins
+              </div>
+              <div className="p-3 bg-muted/10 space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Primary Accent Color</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="color" 
+                      value={activeTemplate.colors.primary}
+                      onChange={(e) => updateColors({ primary: e.target.value })}
+                      className="h-8 w-8 rounded cursor-pointer border p-0.5" 
+                    />
+                    <input 
+                      type="text" 
+                      value={activeTemplate.colors.primary}
+                      onChange={(e) => updateColors({ primary: e.target.value })}
+                      className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm" 
+                    />
+                  </div>
                 </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Secondary/Text Color</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="color" 
+                      value={activeTemplate.colors.text}
+                      onChange={(e) => updateColors({ text: e.target.value })}
+                      className="h-8 w-8 rounded cursor-pointer border p-0.5" 
+                    />
+                    <input 
+                      type="text" 
+                      value={activeTemplate.colors.text}
+                      onChange={(e) => updateColors({ text: e.target.value })}
+                      className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm" 
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Accordion Item: Visibility Controls */}
-            <div className="rounded-md border bg-background">
-              <button className="flex items-center justify-between w-full p-3 text-sm font-medium hover:bg-muted/50 transition-colors">
+            <div className="rounded-md border bg-background mt-2 overflow-hidden">
+              <div className="flex items-center justify-between w-full p-3 text-sm font-medium bg-muted/30 border-b">
                 <div className="flex items-center gap-2">
                   <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  Visibility Elements
+                  Visibility Toggles
                 </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
+              </div>
+              <div className="p-3 bg-muted/10 space-y-2">
+                {[
+                  { key: 'showLogo', label: 'Company Logo' },
+                  { key: 'showCompanyName', label: 'Company Name' },
+                  { key: 'showAddress', label: 'Address Block' },
+                  { key: 'showPhone', label: 'Phone Number' },
+                  { key: 'showEmail', label: 'Email Address' },
+                  { key: 'showWebsite', label: 'Website URL' },
+                  { key: 'showRegistration', label: 'Registration Number' },
+                  { key: 'showTaxPin', label: 'Tax PIN' }
+                ].map((item) => (
+                  <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={activeTemplate.visibility[item.key as keyof typeof activeTemplate.visibility]}
+                      onChange={(e) => updateVisibility({ [item.key]: e.target.checked })}
+                      className="rounded border-gray-300 text-primary focus:ring-primary" 
+                    />
+                    <span className="text-xs text-foreground">{item.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
           </div>
         </aside>
 
         {/* Center Canvas Area */}
-        <main className="flex-1 bg-muted/30 overflow-auto flex items-center justify-center p-8 relative">
+        <main className="flex-1 bg-slate-200 dark:bg-slate-900 overflow-auto flex items-center justify-center p-8 relative">
+          
           {/* Zoom Controls */}
-          <div className="absolute bottom-6 right-6 flex items-center gap-1 bg-background border rounded-md shadow-sm p-1">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">-</Button>
-            <span className="text-xs font-medium w-12 text-center">100%</span>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">+</Button>
+          <div className="fixed bottom-6 right-6 flex items-center gap-1 bg-background border rounded-md shadow-sm p-1 z-50">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomOut}>-</Button>
+            <span className="text-xs font-medium w-12 text-center">{zoomLevel}%</span>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleZoomIn}>+</Button>
             <div className="w-px h-4 bg-border mx-1"></div>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleFitPage} title="Fit to 100%">
               <Maximize className="h-3.5 w-3.5" />
             </Button>
           </div>
 
-          {/* The A4 Canvas Document */}
+          {/* Scalable Wrapper */}
           <div 
-            className="bg-white shadow-xl flex flex-col"
             style={{
-              width: "210mm",
-              height: "297mm", // A4 format
-              minHeight: "297mm",
-              maxHeight: "297mm"
+              transform: `scale(${zoomLevel / 100})`,
+              transformOrigin: "top center",
+              transition: "transform 0.15s ease-out"
             }}
+            className="flex items-start justify-center min-h-[297mm]"
           >
-            {/* Header (Letterhead Top) */}
-            <div className="h-32 border-b-4 border-blue-600 flex items-center justify-between px-12 pt-8">
-              <div className="h-16 w-48 bg-slate-100 flex items-center justify-center border border-dashed border-slate-300 text-slate-400 text-sm">
-                [Company Logo]
-              </div>
-              <div className="text-right">
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">ACME CORP</h1>
-                <p className="text-sm text-slate-500 mt-1">Innovating the future.</p>
-              </div>
-            </div>
-
-            {/* Body (Letter Content Placeholder) */}
-            <div className="flex-1 px-16 py-12 flex flex-col gap-4 text-slate-800 text-[11pt] font-serif leading-relaxed">
-              <p className="mb-8">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-              <p className="font-bold">To Whom It May Concern,</p>
-              <div className="space-y-4 text-justify">
-                <p className="bg-slate-100/50 rounded p-1 border border-dashed border-slate-200 text-slate-400 text-center italic">
-                  [Document Body Area - Text typed here will wrap to multiple pages if needed]
-                </p>
-                <div className="h-4 bg-slate-100 rounded w-full"></div>
-                <div className="h-4 bg-slate-100 rounded w-full"></div>
-                <div className="h-4 bg-slate-100 rounded w-11/12"></div>
-                <div className="h-4 bg-slate-100 rounded w-full"></div>
-                <div className="h-4 bg-slate-100 rounded w-4/5"></div>
-              </div>
-              <div className="mt-16">
-                <p>Sincerely,</p>
-                <div className="h-12 w-32 mt-2 mb-2 bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs italic">
-                  [Signature]
-                </div>
-                <p className="font-bold">Jane Doe</p>
-                <p className="text-sm text-slate-500">Chief Executive Officer</p>
-              </div>
-            </div>
-
-            {/* Footer (Letterhead Bottom) */}
-            <div className="h-24 border-t border-slate-200 flex items-center justify-between px-12 text-[9pt] text-slate-500">
-              <div>
-                <p>100 Tech Hub Blvd, Suite 400</p>
-                <p>San Francisco, CA 94105</p>
-              </div>
-              <div className="text-right">
-                <p>contact@acmecorp.com</p>
-                <p>+1 (555) 123-4567</p>
-              </div>
+            {/* The Actual Rendered Document - Isolated for PDF Capture */}
+            <div ref={printRef}>
+              <LetterheadRenderer />
             </div>
           </div>
+
         </main>
       </div>
+
+      {/* HIDDEN DOCX EXPORT ELEMENTS */}
+      {/* These elements are rendered purely so their HTML can be extracted for native Word headers/footers */}
+      <div id="docx-header-wrapper" style={{ display: "none" }}>
+        <DocumentHeader activeTemplate={activeTemplate} companyProfile={companyProfile} isDocxExport={true} />
+      </div>
+      <div id="docx-footer-wrapper" style={{ display: "none" }}>
+        <DocumentFooter activeTemplate={activeTemplate} companyProfile={companyProfile} isDocxExport={true} />
+      </div>
+
     </div>
   )
 }
